@@ -1,4 +1,5 @@
 import AppKit
+import SwiftCoreNLP
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     let windowDelegate = WindowDelegate()
@@ -7,10 +8,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let appMenu = NSMenuItem()
         appMenu.submenu = NSMenu()
         appMenu.submenu?.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
-        let mainMenu = NSMenu(title: "My Swift Script")
+        let mainMenu = NSMenu(title: "Semantic Text Editor")
         mainMenu.addItem(appMenu)
         NSApplication.shared.mainMenu = mainMenu
-        
+
         let size = CGSize(width: 480, height: 270)
         let vc =  ViewController()
         let window = NSWindow(contentViewController: vc)
@@ -18,11 +19,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         window.setContentSize(size)
         window.styleMask = [.closable, .miniaturizable, .resizable, .titled]
         window.delegate = windowDelegate
-        window.title = "My Swift Script"
+        window.title = "Semantic Text Editor"
 
         window.center()
         window.makeKeyAndOrderFront(window)
-        
+
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
     }

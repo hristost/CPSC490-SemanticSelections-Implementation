@@ -15,7 +15,7 @@ class SemanticTextView: NSTextView {
     init() {
         super.init(frame: .zero)
         /// CoreNLP server we use for parsing
-        let NLPServer = CoreNLPServer(url: "http://localhost:9000/")!
+        let NLPServer = LanguageServer.shared!
 
         NotificationCenter.default
             // Listen for text changes
@@ -24,6 +24,7 @@ class SemanticTextView: NSTextView {
             .debounce(for: .milliseconds(1000), scheduler: DispatchQueue.main)
             // Parse
             .compactMap { ($0.object as? NSText)?.string }
+            .setFailureType(to: CoreNLPServer.AnnotationError.self)  // this is required for iOS 13
             .flatMap { NLPServer.annotatePublisher($0, properties: .init(annotators: [.parse])) }
             .map { Constituent(document: $0) }
             // Sometimes, we receive parses for outdated text. Checking the length suffices to
@@ -90,7 +91,7 @@ class SemanticTextView: NSTextView {
             let start = tree.offset
             let length = tree.length
             let range = NSMakeRange(Int(start) + offset, Int(length))
-            let alpha = max(0.2, 1 - CGFloat(level - 5) / 9)
+            let alpha = max(0.2, 1 - CGFloat(level) / 9)
             let color = NSColor.labelColor.withAlphaComponent(alpha)
             let totalLength = self.attributedString().length
             if totalLength > 0 {

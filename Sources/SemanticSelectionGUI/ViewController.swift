@@ -8,13 +8,15 @@ class ViewController: NSViewController, NSTextViewDelegate {
         self.view.addSubview(textField)
         textField.translatesAutoresizingMaskIntoConstraints = false
 
-        if let fontDesc =
-            NSFontDescriptor
-            .preferredFontDescriptor(forTextStyle: .headline)
-            .withDesign(.serif)
-        {
-            let font = NSFont.init(descriptor: fontDesc, size: 24)
-            textField.font = font
+        if #available(OSX 11.0, *) {
+            if let fontDesc =
+                NSFontDescriptor
+                .preferredFontDescriptor(forTextStyle: .headline)
+                .withDesign(.serif)
+            {
+                let font = NSFont.init(descriptor: fontDesc, size: 24)
+                textField.font = font
+            }
         }
 
         NSLayoutConstraint.activate([
