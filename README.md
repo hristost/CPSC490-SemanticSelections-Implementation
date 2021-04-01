@@ -16,3 +16,18 @@ To run:
     ```sh
     swift run
     ```
+
+# Making selections
+
+## Using the mouse
+
+- Hold down the scroll wheel button
+- Move the mouse to move the selection
+- Use the scroll wheel to expand / shrink selection
+
+## Using the trackpad
+
+- Hold down the Command key
+- Move the cursor to move selection
+- Pinch out to expand selection, pinch in to shrink
+

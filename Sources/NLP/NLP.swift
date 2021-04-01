@@ -50,14 +50,20 @@ public class Constituent {
 
             }
             if self.children.count == 1 {
+                if self.children[0].children.isEmpty {
+                    self.value = self.children[0].value
+                }
                 self.children = self.children[0].children
+
             }
 
             start = min(start, _start)
             end = max(end, _end)
             self.offset = _start - start
             self.length = _end - _start
+
         }
+        self.children.forEach { $0.parent = self }
     }
 
     /// Make a constituent tree using a parse tree from CoreNLP

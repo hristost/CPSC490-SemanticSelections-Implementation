@@ -36,6 +36,7 @@ class SemanticTextView: NSTextView {
             .sink { notification in
                 print(notification)
             } receiveValue: { tree in
+                print(tree)
                 self.parse = tree
                 self.highlight(tree: tree)
             }
@@ -48,31 +49,65 @@ class SemanticTextView: NSTextView {
         super.init(frame: frameRect, textContainer: textContainer)
     }
 
+    override func flagsChanged(with event: NSEvent) {
+        guard event.modifierFlags.contains(.command) else {
+            super.flagsChanged(with: event)
+            return
+        }
+        selectionMode(using: .trackpad)
+    }
+
     override func otherMouseDown(with event: NSEvent) {
         // When the tertiary mouse button (i.e. wheel button) is pressed, we enter selection mode:
         // - Moving the mouse selects a constituent under the cursor
         // - Scrolling up or down using the scroll wheel expands or shrinks the selection
+        selectionMode(using: .mouse)
+    }
+
+    /// Start selection mode
+    enum SelectionInteraction { case mouse, trackpad }
+    func selectionMode(using mode: SelectionInteraction) {
+        print("Enter selection mode")
+        var magnification: CGFloat = 0
+        let events = NSEvent.EventTypeMask([
+            .mouseMoved,
+            .otherMouseDragged,
+        ])
+        .union(
+            (mode == .mouse ? [.scrollWheel, .otherMouseUp] : [.flagsChanged, .magnify])
+        )
 
         poll: while true {
             guard
-                let event = self.window?.nextEvent(matching: [
-                    .otherMouseUp,
-                    .mouseMoved,
-                    .otherMouseDragged,
-                    .scrollWheel,
-                ])
+                let event = self.window?.nextEvent(matching: events)
             else { continue }
 
             switch event.type {
             case .otherMouseUp:
                 break poll
+            case .flagsChanged:
+                if !event.modifierFlags.contains(.command) {
+                    break poll
+                }
+
             case .scrollWheel:
                 let direction = event.deltaY > 0 ? 1 : -1
                 self.selectionLevel += direction
+            case .magnify:
+                magnification += event.magnification
+                if abs(magnification) > 0.1 {
+                    let direction = magnification < 0 ? 1 : -1
+                    self.selectionLevel += direction
+                    self.selectionLevel = max(self.selectionLevel, 0)
+                    magnification = 0
+                }
+
             default:
                 ()
             }
+
             let location = self.convert(event.locationInWindow, from: nil)
+            self.selectionLevel = max(self.selectionLevel, 0)
 
             let offset = self.characterIndexForInsertion(at: location)
             let mouseRange = NSMakeRange(offset, 1)
@@ -80,9 +115,12 @@ class SemanticTextView: NSTextView {
                 let start = selection.offset
                 let selectionRange = NSMakeRange(start, Int(selection.child.length))
                 self.setSelectedRange(selectionRange)
+                self.selectionLevel = selection.depth - 1
+                self.selectionLevel = max(self.selectionLevel, 0)
             }
 
         }
+        print("End selection mode")
     }
 
     func highlight(tree: Constituent, offset: Int = 0, level: Int = 0) {
