@@ -22,10 +22,25 @@ class ViewController: NSViewController, NSTextViewDelegate {
         NSLayoutConstraint.activate([
             view.widthAnchor.constraint(greaterThanOrEqualToConstant: 300),
             view.heightAnchor.constraint(greaterThanOrEqualToConstant: 300),
-            textField.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            textField.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            textField.topAnchor.constraint(equalTo: view.topAnchor),
-            textField.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            //textField.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            //textField.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            //textField.topAnchor.constraint(equalTo: view.topAnchor),
+            //textField.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
+
+        textField.insertText("The quick brown fox jumped over the lazy dog.")
+
     }
+
+    override func viewDidLayout() {
+        super.viewWillLayout()
+        textField.frame = view.bounds
+        if #available(macOS 11, *) {
+            let titleBarHeight = self.view.safeAreaInsets.top
+            textField.textContainerInset = .init(width: 10, height: titleBarHeight)
+        }
+        //textField.c
+
+    }
+
 }

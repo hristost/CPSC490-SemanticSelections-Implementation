@@ -20,6 +20,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         window.styleMask = [.closable, .miniaturizable, .resizable, .titled]
         window.delegate = windowDelegate
         window.title = "Semantic Text Editor"
+        if #available(macOS 11, *) {
+            window.titlebarAppearsTransparent = true
+            window.titleVisibility = .hidden
+            window.styleMask.insert(NSWindow.StyleMask.fullSizeContentView)
+        }
 
         window.center()
         window.makeKeyAndOrderFront(window)
