@@ -1,4 +1,5 @@
-import SwiftCoreNLP
+import Foundation
+import PythonKit
 
 public class Constituent {
     /// Parent of the constituent. If null, this is the ROOT
@@ -12,43 +13,46 @@ public class Constituent {
 
     public var value: String? = nil
 
-    /// Make a constituent tree using a parse tree from CoreNLP
+    /// Make a constituent tree using a nltk parse tree
     /// - Parameters:
-    ///     - parse: parse tree from CoreNLP
+    ///     - parse: nltk.Tree python object
     ///     - tokens: a list of tokens for the sentence containing the constituent tree
     ///     - tokenIdx: index of first token in `tokens` that has not been included in a constituent
     ///     - start: index in the document string where this constituent begins
     init(
-        parse: Edu_Stanford_Nlp_Pipeline_ParseTree,
-        tokens: [Edu_Stanford_Nlp_Pipeline_Token],
+        parse: PythonObject,
+        tokens: [(start: UInt32, end: UInt32)],
         tokenIdx: inout Int,
         start: inout UInt32,
         end: inout UInt32
     ) {
         parent = nil
-        if parse.child.isEmpty {
+        let children: [PythonObject] = .init(parse.children)
+        if children.isEmpty {
             // This node has no children, therefore it is a leaf node
             let token = tokens[tokenIdx]
             tokenIdx += 1
 
-            start = min(start, token.beginChar)
-            end = max(end, token.endChar)
+            start = min(start, token.start)
+            end = max(end, token.end)
 
-            self.offset = token.beginChar - start
-            self.length = token.endChar - token.beginChar
+            self.offset = token.start - start
+            self.length = token.end - token.start
             self.children = []
-            self.value = token.word
+            self.value = String(parse.label)
 
         } else {
-
             var _start: UInt32 = .max
             var _end: UInt32 = .min
 
-            self.children = parse.child.map {
-                Constituent(
+            self.children = children.map {
+                return Constituent(
                     parse: $0, tokens: tokens, tokenIdx: &tokenIdx, start: &_start, end: &_end)
 
             }
+            self.value = String(parse.label)
+
+            // Transform unary trees
             if self.children.count == 1 {
                 if self.children[0].children.isEmpty {
                     self.value = self.children[0].value
@@ -65,15 +69,8 @@ public class Constituent {
         }
         self.children.forEach { $0.parent = self }
     }
-
-    /// Make a constituent tree using a parse tree from CoreNLP
-    /// - Parameters:
-    ///     - parse: parse tree from CoreNLP
-    ///     - tokens: a list of tokens for the sentence containing the constituent tree
-    ///     - tokenIdx: index of first token in `tokens` that has not been included in a constituent
-    ///     - start: index in the document string where this constituent begins
     convenience init(
-        sentence: Edu_Stanford_Nlp_Pipeline_Sentence,
+        sentence: (parseTree: PythonObject, tokens: [(UInt32, UInt32)]),
         start: inout UInt32,
         end: inout UInt32
     ) {
@@ -81,7 +78,7 @@ public class Constituent {
         var _start: UInt32 = .max
         var _end: UInt32 = .min
         self.init(
-            parse: sentence.parseTree, tokens: sentence.token, tokenIdx: &tokenIdx,
+            parse: sentence.parseTree, tokens: sentence.tokens, tokenIdx: &tokenIdx,
             start:
                 &_start, end: &_end)
 
@@ -90,32 +87,32 @@ public class Constituent {
         self.offset = _start - start
         self.length = _end - _start
     }
-    /// Make a constituent tree using a parse tree from CoreNLP
+    /// Make a constituent tree using a nltk tree
     /// - Parameters:
-    ///     - parse: parse tree from CoreNLP
+    ///     - parse: nltk.Tree python object
     ///     - tokens: a list of tokens for the sentence containing the constituent tree
     ///     - tokenIdx: index of first token in `tokens` that has not been included in a constituent
     ///     - start: index in the document string where this constituent begins
     public init(
-        document: Edu_Stanford_Nlp_Pipeline_Document
+        sentences: [(parseTree: PythonObject, tokens: [(UInt32, UInt32)])]
     ) {
         var _start: UInt32 = .max
         var _end: UInt32 = .min
-        self.children = document.sentence.map {
-            Constituent(sentence: $0, start: &_start, end: &_end)
+        self.children = sentences.map {
+            print("Mapping sentence with \($0.tokens.count) tokens")
+            let c = Constituent(sentence: $0, start: &_start, end: &_end)
+            print("Done")
+            return c
         }
         self.offset = children.isEmpty ? 0 : _start
         self.length = children.isEmpty ? 0 : _end - _start
+        print("Conversion done")
+        print(self)
     }
 }
 
-
 extension Constituent: CustomStringConvertible {
     public var description: String {
-        if let value = value {
-            return "(\(offset) \(length) \(value))"
-        } else {
-            return "(\(offset) \(length) \(self.children.map { $0.description }.joined(separator: " ")))"
-        }
+        "(\(offset) \(length) \(value ?? "?") \(self.children.map { $0.description }.joined(separator: " ")))"
     }
 }

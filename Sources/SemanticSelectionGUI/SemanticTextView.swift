@@ -15,28 +15,27 @@ class SemanticTextView: NSTextView {
     init() {
         super.init(frame: .zero)
         /// CoreNLP server we use for parsing
-        let NLPServer = LanguageServer.shared!
+        let NLPServer = Parser.shared!
 
         NotificationCenter.default
             // Listen for text changes
             .publisher(for: NSText.didChangeNotification, object: self)
             // Wait so the language server is not overwhelmed
-            .debounce(for: .milliseconds(1000), scheduler: DispatchQueue.main)
+            .debounce(for: .milliseconds(50), scheduler: DispatchQueue.main)
             // Parse
             .compactMap { ($0.object as? NSText)?.string }
-            .setFailureType(to: CoreNLPServer.AnnotationError.self)  // this is required for iOS 13
-            .flatMap { NLPServer.annotatePublisher($0, properties: .init(annotators: [.parse])) }
-            .map { Constituent(document: $0) }
+            .setFailureType(to: Parser.SuParError.self)  // this is required for iOS 13
+            .tryMap { try NLPServer.parse($0) }
             // Sometimes, we receive parses for outdated text. Checking the length suffices to
             // prevent crashes when highlighting, and any incorrect parsing is quickly resolved with
             // the next parse
-            .filter { self.textStorage!.length == $0.length }
+            //.filter { self.textStorage!.length == $0.length }
             // Update state
             .receive(on: DispatchQueue.main)
             .sink { notification in
-                print(notification)
+                print("NOTF", notification)
             } receiveValue: { tree in
-                print(tree)
+                print("RECV", tree)
                 self.parse = tree
                 self.highlight(tree: tree)
             }
