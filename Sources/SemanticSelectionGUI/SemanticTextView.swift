@@ -1,7 +1,6 @@
 import AppKit
 import Combine
 import NLP
-import SwiftCoreNLP
 
 class SemanticTextView: NSTextView {
     /// Parsed text

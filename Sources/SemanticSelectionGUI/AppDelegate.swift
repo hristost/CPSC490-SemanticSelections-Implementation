@@ -1,5 +1,4 @@
 import AppKit
-import SwiftCoreNLP
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     let windowDelegate = WindowDelegate()
