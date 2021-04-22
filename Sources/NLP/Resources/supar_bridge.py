@@ -19,6 +19,13 @@ Span = Tuple[int, int]
 
 parser = supar.Parser.load('crf-con-en')
 
+class Token:
+    def __init__(self, start, end):
+        self.start = start
+        self.end = end
+    def __repr__(self):
+        return str(self.start) + "--" + str(self.end)
+
 class Tree:
     def __init__(self, label, children):
         self.label = label
@@ -49,7 +56,7 @@ def parse(text: str):
     def embed_in_sent(token_span: Span, sent_span: Span) -> Span:
         start, end = token_span
         sent_start = sent_span[0]
-        return (sent_start + start, sent_start + end)
+        return Token(sent_start + start, sent_start + end)
     all_token_spans = [[embed_in_sent(token, sent) for token in token_spans]
                                                    for (sent, token_spans) in zip(sent_spans, sent_token_spans)]
     parsed = map(nltk_to_tree, parser.predict(sent_tokens, lang=None, verbose=True).trees)

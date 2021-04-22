@@ -1,20 +1,25 @@
 import Foundation
 
 public extension Constituent {
-    var depth: Int {
-        (self.parent?.depth ?? -1) + 1
-
-    }
-    func findChild(containing range: NSRange, at level: Int) -> (child: Constituent, offset: Int,
-depth: Int)? {
-        if range.location >= 0 && range.length + range.location <= Int(self.length) {
+    /// Find a child constituent that containing a given range and located at a certain level
+    /// - Parameters:
+    ///     - range: range of characters that the constituent should contain
+    ///     - level:
+    func findChild(containing range: Range<Int>, at level: Int) -> (
+        child: Constituent, offset: Int,
+        depth: Int
+    )? {
+        if range.startIndex >= 0 && range.endIndex <= self.length {
             if level > 0 {
                 for child in children {
-                    var range = range
-                    range.location -= Int(child.offset)
+                    let offset = child.offset
+                    let range = (range.lowerBound - offset)..<(range.upperBound - offset)
                     let lowerLevel = children.count > 1 ? level - 1 : level
-                    if let (grandChild, grandOffset, grandDepth) = child.findChild(containing: range, at:
-lowerLevel) {
+                    if let (grandChild, grandOffset, grandDepth) = child.findChild(
+                        containing: range,
+                        at:
+                            lowerLevel)
+                    {
                         return (grandChild, grandOffset + Int(child.offset), 1 + grandDepth)
                     }
                 }
@@ -23,5 +28,12 @@ lowerLevel) {
         } else {
             return nil
         }
+    }
+
+    func leftNeighbour() -> Constituent? {
+        return nil
+    }
+    func rightNeighbour() -> Constituent? {
+        return nil
     }
 }

@@ -34,7 +34,6 @@ class SemanticTextView: NSTextView {
             .sink { notification in
                 print("NOTF", notification)
             } receiveValue: { tree in
-                print("RECV", tree)
                 self.parse = tree
                 self.highlight(tree: tree)
             }
@@ -108,7 +107,7 @@ class SemanticTextView: NSTextView {
             self.selectionLevel = max(self.selectionLevel, 0)
 
             let offset = self.characterIndexForInsertion(at: location)
-            let mouseRange = NSMakeRange(offset, 1)
+            let mouseRange = offset..<(offset+1)
             if let selection = parse?.findChild(containing: mouseRange, at: self.selectionLevel) {
                 let start = selection.offset
                 let selectionRange = NSMakeRange(start, Int(selection.child.length))

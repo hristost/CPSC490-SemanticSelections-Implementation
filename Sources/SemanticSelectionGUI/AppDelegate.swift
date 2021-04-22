@@ -6,13 +6,47 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         let appMenu = NSMenuItem()
         appMenu.submenu = NSMenu()
-        appMenu.submenu?.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        appMenu.submenu?.items = [
+            NSMenuItem(
+                title: "Close", action: #selector(NSWindow.performClose(_:)),
+                keyEquivalent: "w"),
+            NSMenuItem(
+                title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        ]
         let mainMenu = NSMenu(title: "Semantic Text Editor")
         mainMenu.addItem(appMenu)
+
+        let editMenu = NSMenuItem()
+        editMenu.title = "Edit"
+        editMenu.submenu = NSMenu(title: "Edit")
+        editMenu.submenu?.items =
+            [
+                NSMenuItem(title: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x"),
+                NSMenuItem(title: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c"),
+                NSMenuItem(title: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v"),
+                NSMenuItem.separator(),
+                NSMenuItem(
+                    title: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a"
+                ),
+                NSMenuItem.separator(),
+            ]
+            + [
+                NSMenuItem(title: "Enter Selection Mode", action: nil, keyEquivalent: ""),
+                NSMenuItem(title: "Select Sentence", action: nil, keyEquivalent: "s"),
+                NSMenuItem(title: "Select Parent Constituent", action: nil, keyEquivalent: "p"),
+                NSMenuItem(title: "Select Left Neighbour", action: nil, keyEquivalent: "a"),
+                NSMenuItem(title: "Select Right Neighbour", action: nil, keyEquivalent: "s"),
+            ].map {
+                $0.keyEquivalentModifierMask = .option
+                return $0
+            }
+
+        mainMenu.addItem(editMenu)
+
         NSApplication.shared.mainMenu = mainMenu
 
         let size = CGSize(width: 480, height: 270)
-        let vc =  ViewController()
+        let vc = ViewController()
         let window = NSWindow(contentViewController: vc)
         vc.view.frame = .init(origin: .zero, size: CGSize(width: 100, height: 100))
         window.setContentSize(size)

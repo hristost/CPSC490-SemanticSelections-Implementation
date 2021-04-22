@@ -2,6 +2,33 @@
   "object": {
     "pins": [
       {
+        "package": "FoundationKit",
+        "repositoryURL": "https://github.com/pvieito/FoundationKit.git",
+        "state": {
+          "branch": "master",
+          "revision": "a36ee01cb743a0afb64531e9f8456ccceccd9fbe",
+          "version": null
+        }
+      },
+      {
+        "package": "MoreCodable",
+        "repositoryURL": "https://github.com/tattn/MoreCodable.git",
+        "state": {
+          "branch": "master",
+          "revision": "2e1285c369266ff50c04b6f687099dffaafea873",
+          "version": null
+        }
+      },
+      {
+        "package": "PythonCodable",
+        "repositoryURL": "https://github.com/pvieito/PythonCodable.git",
+        "state": {
+          "branch": "master",
+          "revision": "da9054a2fc2fbac946f24945a73900274c3abae7",
+          "version": null
+        }
+      },
+      {
         "package": "PythonKit",
         "repositoryURL": "https://github.com/pvieito/PythonKit.git",
         "state": {
