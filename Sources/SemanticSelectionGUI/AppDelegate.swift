@@ -4,6 +4,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     let windowDelegate = WindowDelegate()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        let vc = ViewController()
+
         let appMenu = NSMenuItem()
         appMenu.submenu = NSMenu()
         appMenu.submenu?.items = [
@@ -33,7 +35,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             + [
                 NSMenuItem(title: "Enter Selection Mode", action: nil, keyEquivalent: ""),
                 NSMenuItem(title: "Select Sentence", action: nil, keyEquivalent: "s"),
-                NSMenuItem(title: "Select Parent Constituent", action: nil, keyEquivalent: "p"),
+                NSMenuItem(title: "Select Parent Constituent",
+                 action: #selector(vc.expandSelection),
+                  keyEquivalent: String(format: "%C", NSUpArrowFunctionKey)),
+                NSMenuItem(title: "Refine Selection",
+                 action: #selector(vc.focusSelection),
+                  keyEquivalent: String(format: "%C", NSDownArrowFunctionKey)),
                 NSMenuItem(title: "Select Left Neighbour", action: nil, keyEquivalent: "a"),
                 NSMenuItem(title: "Select Right Neighbour", action: nil, keyEquivalent: "s"),
             ].map {
@@ -46,7 +53,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSApplication.shared.mainMenu = mainMenu
 
         let size = CGSize(width: 480, height: 270)
-        let vc = ViewController()
         let window = NSWindow(contentViewController: vc)
         vc.view.frame = .init(origin: .zero, size: CGSize(width: 100, height: 100))
         window.setContentSize(size)

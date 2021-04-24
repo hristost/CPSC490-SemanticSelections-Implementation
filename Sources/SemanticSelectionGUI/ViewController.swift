@@ -43,4 +43,11 @@ class ViewController: NSViewController, NSTextViewDelegate {
 
     }
 
+    @objc func expandSelection() {
+        textField.expandSelection()
+    }
+    @objc func focusSelection() {
+        textField.focusSelection(at: -1)
+    }
+
 }
