@@ -74,6 +74,28 @@ private extension Constituent {
             offset: children.isEmpty ? 0 : _start,
             length: children.isEmpty ? 0 : _end - _start,
             children: children)
+
+        self.children.forEach { $0.parent = self }
+    }
+    convenience init(
+        sentence: (parseTree: PythonTree, tokens: [PythonToken]),
+        index: Int,
+        start: inout Int,
+        end: inout Int
+    ) {
+        var tokenIdx = 0
+        var _start: Int = .max
+        var _end: Int = .min
+        self.init(
+            parse: sentence.parseTree, level: 1, index: index, tokens: sentence.tokens,
+            tokenIdx: &tokenIdx,
+            start:
+                &_start, end: &_end)
+
+        start = min(start, _start)
+        end = max(end, _end)
+        self.offset = _start - start
+        self.length = _end - _start
     }
 
     /// Make a constituent tree using a nltk parse tree
@@ -141,25 +163,5 @@ private extension Constituent {
                 children: children)
             self.children.forEach { $0.parent = self }
         }
-    }
-    convenience init(
-        sentence: (parseTree: PythonTree, tokens: [PythonToken]),
-        index: Int,
-        start: inout Int,
-        end: inout Int
-    ) {
-        var tokenIdx = 0
-        var _start: Int = .max
-        var _end: Int = .min
-        self.init(
-            parse: sentence.parseTree, level: 1, index: index, tokens: sentence.tokens,
-            tokenIdx: &tokenIdx,
-            start:
-                &_start, end: &_end)
-
-        start = min(start, _start)
-        end = max(end, _end)
-        self.offset = _start - start
-        self.length = _end - _start
     }
 }

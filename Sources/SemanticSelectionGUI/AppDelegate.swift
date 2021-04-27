@@ -13,7 +13,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 title: "Close", action: #selector(NSWindow.performClose(_:)),
                 keyEquivalent: "w"),
             NSMenuItem(
-                title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+                title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"),
         ]
         let mainMenu = NSMenu(title: "Semantic Text Editor")
         mainMenu.addItem(appMenu)
@@ -35,14 +35,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             + [
                 NSMenuItem(title: "Enter Selection Mode", action: nil, keyEquivalent: ""),
                 NSMenuItem(title: "Select Sentence", action: nil, keyEquivalent: "s"),
-                NSMenuItem(title: "Select Parent Constituent",
-                 action: #selector(vc.expandSelection),
-                  keyEquivalent: String(format: "%C", NSUpArrowFunctionKey)),
-                NSMenuItem(title: "Refine Selection",
-                 action: #selector(vc.focusSelection),
-                  keyEquivalent: String(format: "%C", NSDownArrowFunctionKey)),
-                NSMenuItem(title: "Select Left Neighbour", action: nil, keyEquivalent: "a"),
-                NSMenuItem(title: "Select Right Neighbour", action: nil, keyEquivalent: "s"),
+                NSMenuItem(
+                    title: "Select Parent Constituent",
+                    action: #selector(vc.expandSelection),
+                    keyEquivalent: String(format: "%C", NSUpArrowFunctionKey)),
+                NSMenuItem(
+                    title: "Refine Selection",
+                    action: #selector(vc.focusSelection),
+                    keyEquivalent: String(format: "%C", NSDownArrowFunctionKey)),
+                NSMenuItem(
+                    title: "Select Left Neighbour",
+                    action: #selector(vc.selectLeftNeighbour),
+                    keyEquivalent: String(format: "%C", NSLeftArrowFunctionKey)),
+                NSMenuItem(
+                    title: "Select Right Neighbour",
+                    action: #selector(vc.selectRightNeighbour),
+                    keyEquivalent: String(format: "%C", NSRightArrowFunctionKey)),
             ].map {
                 $0.keyEquivalentModifierMask = .option
                 return $0

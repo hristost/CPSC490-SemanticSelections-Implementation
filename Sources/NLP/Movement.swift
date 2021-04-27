@@ -47,10 +47,36 @@ extension Constituent {
         return self
     }
 
+    enum Direction { case left, right }
+    func neighbour(direction: Direction) -> Constituent? {
+        guard let parent = self.parent else { return nil }
+        let idx = self.index + (direction == .right ? 1 : -1)
+        if parent.children.indices.contains(idx) {
+            return parent.children[idx]
+        } else {
+            return parent.neighbour(direction: direction)
+        }
+    }
+
+    func slide(to level: Int, on side: Direction) -> Constituent {
+        func child(node: Constituent) -> Constituent? {
+            side == .left ? node.children.first : node.children.last
+        }
+
+        var node = self
+        while node.level < level,
+            let child = side == .left ? node.children.first : node.children.last
+        {
+            node = child
+        }
+        return node
+
+    }
+
     public func leftNeighbour() -> Constituent? {
-        return nil
+        return neighbour(direction: .left)?.slide(to: self.level, on: .right)
     }
     public func rightNeighbour() -> Constituent? {
-        return nil
+        return neighbour(direction: .right)?.slide(to: self.level, on: .left)
     }
 }

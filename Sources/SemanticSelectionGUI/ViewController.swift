@@ -28,7 +28,11 @@ class ViewController: NSViewController, NSTextViewDelegate {
             //textField.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
 
-        textField.insertText("The quick brown fox jumped over the lazy dog.")
+        textField.insertText("""
+        The quick brown fox jumped over the lazy dog.
+        I went to Stop and Shop and bought some milk, oranges that I will use to squeeze orange\
+        juice, flour that will go in banana bread, and some vegetables.
+        """, replacementRange: NSRange(location: 0, length: 0))
 
     }
 
@@ -48,6 +52,12 @@ class ViewController: NSViewController, NSTextViewDelegate {
     }
     @objc func focusSelection() {
         textField.focusSelection(at: -1)
+    }
+    @objc func selectLeftNeighbour() {
+        textField.selectLeftNeighbour()
+    }
+    @objc func selectRightNeighbour() {
+        textField.selectRightNeighbour()
     }
 
 }

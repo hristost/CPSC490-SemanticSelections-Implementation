@@ -34,7 +34,7 @@ class SemanticTextView: NSTextView {
             // Sometimes, we receive parses for outdated text. Checking the length suffices to
             // prevent crashes when highlighting, and any incorrect parsing is quickly resolved with
             // the next parse
-            //.filter { self.textStorage!.length == $0.length }
+            .filter { self.textStorage!.length == $0.length }
             // Update state
             .receive(on: DispatchQueue.main)
             .sink { notification in
@@ -191,6 +191,42 @@ class SemanticTextView: NSTextView {
                 parent.lastFocus = node
                 node = parent
             }
+        }
+    }
+
+    func selectLeftNeighbour() {
+        guard
+            let range = Range(self.selectedRange()),
+            let constituent = parse?.descendant(containing: range),
+            range.count == constituent.length,
+            let neighbour = constituent.leftNeighbour()
+        else { return }
+
+        self.setSelectedRange(.init(neighbour.absoluteRange))
+        self.selectionLevel = neighbour.level
+
+        var node = neighbour
+        while let parent = node.parent {
+            parent.lastFocus = node
+            node = parent
+        }
+    }
+
+    func selectRightNeighbour() {
+        guard
+            let range = Range(self.selectedRange()),
+            let constituent = parse?.descendant(containing: range),
+            range.count == constituent.length,
+            let neighbour = constituent.rightNeighbour()
+        else { return }
+
+        self.setSelectedRange(.init(neighbour.absoluteRange))
+        self.selectionLevel = neighbour.level
+
+        var node = neighbour
+        while let parent = node.parent {
+            parent.lastFocus = node
+            node = parent
         }
     }
 }
