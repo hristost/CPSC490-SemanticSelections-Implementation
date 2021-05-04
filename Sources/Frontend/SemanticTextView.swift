@@ -1,6 +1,6 @@
 import AppKit
 import Combine
-import NLP
+import Backend
 
 extension Int {
     func clamped(to range: Range<Int>) -> Int {

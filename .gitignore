@@ -3,3 +3,4 @@
 /Packages
 /*.xcodeproj
 xcuserdata/
+Sources/Backend/__pycache__
