@@ -30,16 +30,14 @@ class SemanticTextView: NSTextView {
             // Parse
             .compactMap { ($0.object as? NSText)?.string }
             .setFailureType(to: Parser.SuParError.self)  // this is required for iOS 13
-            .tryMap { try NLPServer.parse($0) }
-            // Sometimes, we receive parses for outdated text. Checking the length suffices to
-            // prevent crashes when highlighting, and any incorrect parsing is quickly resolved with
-            // the next parse
-            .filter { self.textStorage!.length == $0.length }
+            .tryMap { try (NLPServer.parse($0), $0.hashValue) }
+            // Sometimes, we receive parses for outdated text. Checking the hash suffices to
+            // prevent crashes when highlighting
+            .filter { self.textStorage?.string.hashValue == $0.1}
             // Update state
             .receive(on: DispatchQueue.main)
-            .sink { notification in
-                print("NOTF", notification)
-            } receiveValue: { tree in
+            .sink { _ in
+            } receiveValue: { tree, _ in
                 self.parse = tree
                 self.highlight(tree: tree)
             }
