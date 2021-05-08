@@ -20,6 +20,9 @@ public class Constituent {
     /// Last children constituent that was selected when expanding or refining a selection
     public var lastFocus: Constituent?
 
+    /// A hash value for the string from which this constituent was made
+    public var hash: Int?
+
     /// Range in the parent constituent
     public var range: Range<Int> {
         (0..<self.length).offset(by: self.offset)

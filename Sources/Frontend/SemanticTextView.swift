@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import Backend
+import NLP
 
 extension Int {
     func clamped(to range: Range<Int>) -> Int {
@@ -29,15 +30,15 @@ class SemanticTextView: NSTextView {
             .debounce(for: .milliseconds(50), scheduler: DispatchQueue.main)
             // Parse
             .compactMap { ($0.object as? NSText)?.string }
-            .setFailureType(to: Parser.SuParError.self)  // this is required for iOS 13
-            .tryMap { try (NLPServer.parse($0), $0.hashValue) }
+            .setFailureType(to: Error.self)  // this is required for iOS 13
+            .flatMap { NLPServer.parse($0) }
             // Sometimes, we receive parses for outdated text. Checking the hash suffices to
             // prevent crashes when highlighting
-            .filter { self.textStorage?.string.hashValue == $0.1}
+            .filter { self.textStorage?.string.hashValue == $0.hash}
             // Update state
             .receive(on: DispatchQueue.main)
             .sink { _ in
-            } receiveValue: { tree, _ in
+            } receiveValue: { tree in
                 self.parse = tree
                 self.highlight(tree: tree)
             }

@@ -17,15 +17,17 @@ let package = Package(
                     "0.4.0")),
     ],
     targets: [
+        .target(name: "NLP"),
         .target(
             name: "Backend",
-            dependencies: ["PythonKit", "PythonCodable"],
+            dependencies: ["NLP", "PythonKit", "PythonCodable"],
             exclude: ["__pycache__"],
             resources: [.copy("supar_bridge.py")]
         ),
         .target(
             name: "Frontend",
             dependencies: [
+                "NLP",
                 "Backend",
                 .product(
                     name: "ArgumentParser",

@@ -1,6 +1,8 @@
 import Foundation
 import PythonCodable
 import PythonKit
+import NLP
+import Combine
 
 public class Parser {
     public static var shared: Parser! = nil
@@ -40,6 +42,22 @@ public class Parser {
         }
 
         return Constituent(sentences: sents)
+    }
+
+    public func parse(_ text: String) -> AnyPublisher<Constituent, Error> {
+        Deferred {
+            Future<Constituent, Error> { promise in
+                DispatchQueue.main.async {
+                    do {
+                        let parse: Constituent = try self.parse(text)
+                        parse.hash = text.hashValue
+                        promise(.success(parse))
+                    } catch let error {
+                        promise(.failure(error))
+                    }
+                }
+            }.eraseToAnyPublisher()
+        }.eraseToAnyPublisher()
     }
 }
 
