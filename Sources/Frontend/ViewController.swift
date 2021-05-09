@@ -50,6 +50,9 @@ class ViewController: NSViewController, NSTextViewDelegate {
     @objc func expandSelection() {
         textField.expandSelection()
     }
+    @objc func selectSentence() {
+        textField.selectSentence()
+    }
     @objc func focusSelection() {
         textField.focusSelection(at: -1)
     }

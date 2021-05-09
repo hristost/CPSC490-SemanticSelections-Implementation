@@ -30,11 +30,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 NSMenuItem(
                     title: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a"
                 ),
-                NSMenuItem.separator(),
-            ]
+                NSMenuItem.separator()] +
+            [
+                NSMenuItem(
+                    title: "Select Sentence",
+                    action: #selector(vc.selectSentence),
+                    keyEquivalent: "s"),
+            ].map {
+                $0.keyEquivalentModifierMask = [.option, .command]
+                return $0
+            }
             + [
-                NSMenuItem(title: "Enter Selection Mode", action: nil, keyEquivalent: ""),
-                NSMenuItem(title: "Select Sentence", action: nil, keyEquivalent: "s"),
                 NSMenuItem(
                     title: "Select Parent Constituent",
                     action: #selector(vc.expandSelection),

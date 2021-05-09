@@ -1,11 +1,18 @@
 import AppKit
-import Combine
 import Backend
+import Combine
 import NLP
 
 extension Int {
     func clamped(to range: Range<Int>) -> Int {
         Swift.min(Swift.max(self, range.lowerBound), range.upperBound)
+    }
+}
+
+
+extension Optional {
+    func makeNil(if cond: Bool) -> Wrapped? {
+        cond ? nil : self
     }
 }
 
@@ -34,7 +41,7 @@ class SemanticTextView: NSTextView {
             .flatMap { NLPServer.parse($0) }
             // Sometimes, we receive parses for outdated text. Checking the hash suffices to
             // prevent crashes when highlighting
-            .filter { self.textStorage?.string.hashValue == $0.hash}
+            .filter { self.textStorage?.string.hashValue == $0.hash }
             // Update state
             .receive(on: DispatchQueue.main)
             .sink { _ in
@@ -51,14 +58,6 @@ class SemanticTextView: NSTextView {
         super.init(frame: frameRect, textContainer: textContainer)
     }
 
-    override func flagsChanged(with event: NSEvent) {
-        guard event.modifierFlags.contains(.command) else {
-            super.flagsChanged(with: event)
-            return
-        }
-        selectionMode(using: .trackpad)
-    }
-
     override func otherMouseDown(with event: NSEvent) {
         // When the tertiary mouse button (i.e. wheel button) is pressed, we enter selection mode:
         // - Moving the mouse selects a constituent under the cursor
@@ -66,12 +65,17 @@ class SemanticTextView: NSTextView {
         selectionMode(using: .mouse)
     }
 
+    override func selectionRange(forProposedRange proposedCharRange: NSRange, granularity: NSSelectionGranularity) -> NSRange {
+        let range = super.selectionRange(forProposedRange: proposedCharRange, granularity: granularity)
+        print(proposedCharRange, granularity.rawValue, range)
+        return range
+    }
+
     /// Start selection mode
     enum SelectionInteraction { case mouse, trackpad }
     func selectionMode(using mode: SelectionInteraction) {
         print("Enter selection mode")
 
-        var magnification: CGFloat = 0
         let events = NSEvent.EventTypeMask([
             .mouseMoved,
             .otherMouseDragged,
@@ -91,19 +95,8 @@ class SemanticTextView: NSTextView {
             switch event.type {
             case .otherMouseUp:
                 break poll
-            case .flagsChanged:
-                if !event.modifierFlags.contains(.command) {
-                    break poll
-                }
-
             case .scrollWheel:
                 event.deltaY < 0 ? self.expandSelection() : self.focusSelection(at: offset)
-            case .magnify:
-                magnification += event.magnification
-                if abs(magnification) > 0.1 {
-                    magnification > 0 ? expandSelection() : focusSelection(at: offset)
-                    magnification = 0
-                }
             default:
                 let mouseRange = offset..<(offset + 1)
                 if let selection = parse?.findChild(containing: mouseRange, at: self.selectionLevel)
@@ -118,6 +111,18 @@ class SemanticTextView: NSTextView {
 
         }
         print("End selection mode")
+    }
+
+    var magnification: CGFloat = 0
+    override func magnify(with event: NSEvent) {
+        let location = self.convert(event.locationInWindow, from: nil)
+        let offset = self.characterIndexForInsertion(at: location)
+
+        magnification += event.magnification
+        if abs(magnification) > 0.1 {
+            magnification > 0 ? expandSelection() : focusSelection(at: offset, ignoreHistory: true)
+            magnification = 0
+        }
     }
 
     func highlight(tree: Constituent, offset: Int = 0) {
@@ -152,14 +157,8 @@ class SemanticTextView: NSTextView {
             // If the selection lines up with a constituent, select its parent constituent
             constituent = parent
         }
-        self.setSelectedRange(.init(constituent.absoluteRange))
-        self.selectionLevel = constituent.level
 
-        var node = constituent
-        while let parent = node.parent {
-            parent.lastFocus = node
-            node = parent
-        }
+        self.select(constituent)
     }
 
     /// Shrinks the current selection to a descendant constituent that contains the given character
@@ -167,29 +166,25 @@ class SemanticTextView: NSTextView {
     /// will be selected.
     ///
     /// - Parameter centerIndex: index of the character that should remain in the selection
-    func focusSelection(at centerIndex: Int) {
+    func focusSelection(at centerIndex: Int, ignoreHistory: Bool = false) {
         guard
             let range = Range(self.selectedRange()),
             let constituent = parse?.descendant(containing: range)
         else { return }
 
         let cursor = centerIndex - constituent.absoluteRange.lowerBound
-        let cursorClamped =
+        let cursorClamped = min(
             centerIndex.clamped(to: constituent.absoluteRange)
-            - constituent.absoluteRange.lowerBound
+            - constituent.absoluteRange.lowerBound,
+            constituent.length - 1)
+        print("focus at \(centerIndex)", cursor, cursorClamped)
 
         if let child =
             constituent.children.first(where: { $0.range.contains(cursor) })
-            ?? constituent.lastFocus
+            ?? constituent.lastFocus.makeNil(if: ignoreHistory)
             ?? constituent.children.first(where: { $0.range.contains(cursorClamped) })
         {
-            self.setSelectedRange(.init(child.absoluteRange))
-            self.selectionLevel = child.level
-            var node = child
-            while let parent = node.parent {
-                parent.lastFocus = node
-                node = parent
-            }
+            self.select(child)
         }
     }
 
@@ -201,14 +196,7 @@ class SemanticTextView: NSTextView {
             let neighbour = constituent.leftNeighbour()
         else { return }
 
-        self.setSelectedRange(.init(neighbour.absoluteRange))
-        self.selectionLevel = neighbour.level
-
-        var node = neighbour
-        while let parent = node.parent {
-            parent.lastFocus = node
-            node = parent
-        }
+        self.select(neighbour)
     }
 
     func selectRightNeighbour() {
@@ -219,10 +207,29 @@ class SemanticTextView: NSTextView {
             let neighbour = constituent.rightNeighbour()
         else { return }
 
-        self.setSelectedRange(.init(neighbour.absoluteRange))
-        self.selectionLevel = neighbour.level
+        self.select(neighbour)
+    }
 
-        var node = neighbour
+    func selectSentence() {
+        guard
+            let range = Range(self.selectedRange()),
+            var node = parse?.descendant(containing: range)
+        else { return }
+
+        while node.value != "TOP", let parent = node.parent {
+            node = parent
+        }
+
+        if node.value == "TOP" {
+            self.select(node)
+        }
+    }
+
+    private func select(_ span: Constituent) {
+        self.setSelectedRange(.init(span.absoluteRange))
+        self.selectionLevel = span.level
+
+        var node = span
         while let parent = node.parent {
             parent.lastFocus = node
             node = parent
