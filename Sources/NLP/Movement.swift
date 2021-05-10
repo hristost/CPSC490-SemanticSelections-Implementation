@@ -79,4 +79,11 @@ extension Constituent {
     public func rightNeighbour() -> Constituent? {
         return neighbour(direction: .right)?.slide(to: self.level, on: .left)
     }
+
+    /// Find an ancestor node which is a top-level sentence.
+    public func sentenceAncestor() -> Constituent? {
+        var node = self
+        while node.value != "TOP", let parent = node.parent { node = parent }
+        return node.value == "TOP" ? node : nil
+    }
 }

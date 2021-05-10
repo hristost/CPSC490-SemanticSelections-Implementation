@@ -11,7 +11,7 @@ class ViewController: NSViewController, NSTextViewDelegate {
         if #available(OSX 11.0, *) {
             if let fontDesc =
                 NSFontDescriptor
-                .preferredFontDescriptor(forTextStyle: .headline)
+                .preferredFontDescriptor(forTextStyle: .body)
                 .withDesign(.serif)
             {
                 let font = NSFont.init(descriptor: fontDesc, size: 24)
@@ -28,11 +28,7 @@ class ViewController: NSViewController, NSTextViewDelegate {
             //textField.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
 
-        textField.insertText("""
-        The quick brown fox jumped over the lazy dog.
-        I went to Stop and Shop and bought some milk, oranges that I will use to squeeze orange\
-        juice, flour that will go in banana bread, and some vegetables.
-        """, replacementRange: NSRange(location: 0, length: 0))
+        textField.insertText(janet, replacementRange: NSRange(location: 0, length: 0))
 
     }
 

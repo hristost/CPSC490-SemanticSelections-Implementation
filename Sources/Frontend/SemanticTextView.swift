@@ -9,7 +9,6 @@ extension Int {
     }
 }
 
-
 extension Optional {
     func makeNil(if cond: Bool) -> Wrapped? {
         cond ? nil : self
@@ -65,10 +64,51 @@ class SemanticTextView: NSTextView {
         selectionMode(using: .mouse)
     }
 
-    override func selectionRange(forProposedRange proposedCharRange: NSRange, granularity: NSSelectionGranularity) -> NSRange {
-        let range = super.selectionRange(forProposedRange: proposedCharRange, granularity: granularity)
-        print(proposedCharRange, granularity.rawValue, range)
-        return range
+    override func selectionRange(
+        forProposedRange proposedCharRange: NSRange, granularity: NSSelectionGranularity
+    ) -> NSRange {
+        switch granularity {
+        case .selectByCharacter, .selectByWord:
+            return super.selectionRange(forProposedRange: proposedCharRange,
+            granularity: granularity)
+
+        case .selectByParagraph:
+            // The "Select by paragraph" mode is activated with three clicks. We change it to
+            // mean "Select by sentence"
+            if let range = Range(proposedCharRange),
+                let node = self.parse?
+                    .descendant(containing: range)?
+                    .sentenceAncestor()
+            {
+                return .init(node.absoluteRange)
+            }
+
+            return super.selectionRange(
+                forProposedRange: proposedCharRange, granularity: granularity)
+
+        default:
+            return super.selectionRange(forProposedRange: proposedCharRange,
+            granularity: .selectByParagraph)
+        }
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        switch event.clickCount {
+        case 4:
+            // When the user clicks three times, we assume they want to select a paragraph
+            let location = self.convert(event.locationInWindow, from: nil)
+            let offset = self.characterIndexForInsertion(at: location)
+            let paragraph = selectionRange(
+                forProposedRange: .init(location: offset, length: 0),
+                granularity: NSSelectionGranularity(rawValue: 4)!)
+            self.setSelectedRange(paragraph)
+
+
+        default:
+            super.mouseDown(with: event)
+
+        }
+
     }
 
     /// Start selection mode
@@ -175,7 +215,7 @@ class SemanticTextView: NSTextView {
         let cursor = centerIndex - constituent.absoluteRange.lowerBound
         let cursorClamped = min(
             centerIndex.clamped(to: constituent.absoluteRange)
-            - constituent.absoluteRange.lowerBound,
+                - constituent.absoluteRange.lowerBound,
             constituent.length - 1)
         print("focus at \(centerIndex)", cursor, cursorClamped)
 
@@ -213,16 +253,10 @@ class SemanticTextView: NSTextView {
     func selectSentence() {
         guard
             let range = Range(self.selectedRange()),
-            var node = parse?.descendant(containing: range)
+            let node = parse?.descendant(containing: range)?.sentenceAncestor()
         else { return }
 
-        while node.value != "TOP", let parent = node.parent {
-            node = parent
-        }
-
-        if node.value == "TOP" {
-            self.select(node)
-        }
+        self.select(node)
     }
 
     private func select(_ span: Constituent) {
