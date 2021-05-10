@@ -33,7 +33,5 @@ figured out how to do that yet.
 
 ### Using the trackpad
 
-- Hold down the Command key
-- Move the cursor to move selection
-- Pinch out to expand selection, pinch in to shrink
+- With two fingers, pinch out to expand selection, pinch in to shrink
 

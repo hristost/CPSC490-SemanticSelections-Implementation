@@ -61,7 +61,7 @@ class SemanticTextView: NSTextView {
         // When the tertiary mouse button (i.e. wheel button) is pressed, we enter selection mode:
         // - Moving the mouse selects a constituent under the cursor
         // - Scrolling up or down using the scroll wheel expands or shrinks the selection
-        selectionMode(using: .mouse)
+        selectionMode()
     }
 
     override func selectionRange(
@@ -112,17 +112,13 @@ class SemanticTextView: NSTextView {
     }
 
     /// Start selection mode
-    enum SelectionInteraction { case mouse, trackpad }
-    func selectionMode(using mode: SelectionInteraction) {
+    func selectionMode() {
         print("Enter selection mode")
 
         let events = NSEvent.EventTypeMask([
             .mouseMoved,
             .otherMouseDragged,
-        ])
-        .union(
-            (mode == .mouse ? [.scrollWheel, .otherMouseUp] : [.flagsChanged, .magnify])
-        )
+.scrollWheel, .otherMouseUp        ])
 
         poll: while true {
             guard
