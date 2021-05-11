@@ -17,7 +17,7 @@ quickly closes it.
 
 Janet uses her two index fingers that have long green manicure to methodically poke your data into \
 the computer. The keyboard clacks are in beat with the seconds’ hand on the wall clock behind you. \
-J, I, N, H, Backspace, backspace, backspace, O.
+J, I, N, H, Backspace, backspace, backspace.
 
 Janet is interrupted by that familiar Nokia ringtone you have not heard in years. She cheers up.
 

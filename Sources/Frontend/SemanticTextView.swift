@@ -8,6 +8,11 @@ extension Int {
         Swift.min(Swift.max(self, range.lowerBound), range.upperBound)
     }
 }
+extension CGFloat {
+    func clamped(to range: Range<CGFloat>) -> CGFloat {
+        Swift.min(Swift.max(self, range.lowerBound), range.upperBound)
+    }
+}
 
 extension Optional {
     func makeNil(if cond: Bool) -> Wrapped? {
@@ -34,8 +39,10 @@ class SemanticTextView: NSTextView {
             .publisher(for: NSText.didChangeNotification, object: self)
             // Wait so the language server is not overwhelmed
             .debounce(for: .milliseconds(50), scheduler: DispatchQueue.main)
-            // Parse
             .compactMap { ($0.object as? NSText)?.string }
+            // Don't parse if the text hasn't changed since last parse
+            .filter { $0.hashValue != self.parse?.hash }
+            // Parse
             .setFailureType(to: Error.self)  // this is required for iOS 13
             .flatMap { NLPServer.parse($0) }
             // Sometimes, we receive parses for outdated text. Checking the hash suffices to
@@ -46,7 +53,16 @@ class SemanticTextView: NSTextView {
             .sink { _ in
             } receiveValue: { tree in
                 self.parse = tree
-                self.highlight(tree: tree)
+                self.highlight()
+            }
+            .store(in: &self.subscription)
+
+        NotificationCenter.default
+            .publisher(for: NSTextView.didChangeSelectionNotification, object: self)
+            .filter { _ in self.textStorage?.string.hashValue == self.parse?.hash }
+            .receive(on: DispatchQueue.main)
+            .sink { _ in
+                self.highlight()
             }
             .store(in: &self.subscription)
     }
@@ -69,8 +85,9 @@ class SemanticTextView: NSTextView {
     ) -> NSRange {
         switch granularity {
         case .selectByCharacter, .selectByWord:
-            return super.selectionRange(forProposedRange: proposedCharRange,
-            granularity: granularity)
+            return super.selectionRange(
+                forProposedRange: proposedCharRange,
+                granularity: granularity)
 
         case .selectByParagraph:
             // The "Select by paragraph" mode is activated with three clicks. We change it to
@@ -87,8 +104,9 @@ class SemanticTextView: NSTextView {
                 forProposedRange: proposedCharRange, granularity: granularity)
 
         default:
-            return super.selectionRange(forProposedRange: proposedCharRange,
-            granularity: .selectByParagraph)
+            return super.selectionRange(
+                forProposedRange: proposedCharRange,
+                granularity: .selectByParagraph)
         }
     }
 
@@ -103,7 +121,6 @@ class SemanticTextView: NSTextView {
                 granularity: NSSelectionGranularity(rawValue: 4)!)
             self.setSelectedRange(paragraph)
 
-
         default:
             super.mouseDown(with: event)
 
@@ -115,10 +132,9 @@ class SemanticTextView: NSTextView {
     func selectionMode() {
         print("Enter selection mode")
 
-        let events = NSEvent.EventTypeMask([
-            .mouseMoved,
-            .otherMouseDragged,
-.scrollWheel, .otherMouseUp        ])
+        let events: NSEvent.EventTypeMask = [
+            .mouseMoved, .otherMouseDragged, .scrollWheel, .otherMouseUp,
+        ]
 
         poll: while true {
             guard
@@ -161,40 +177,24 @@ class SemanticTextView: NSTextView {
         }
     }
 
-    func highlight(tree: Constituent, offset: Int = 0) {
-        guard let text = self.textStorage else { return }
-        if tree.children.isEmpty {
-            let start = tree.offset
-            let length = tree.length
-            let range = NSMakeRange(Int(start) + offset, Int(length))
-            let alpha = max(0.2, 1 - CGFloat(tree.level) / 9)
-            let color = NSColor.labelColor.withAlphaComponent(alpha)
-            let totalLength = self.attributedString().length
-            if totalLength > 0 {
-                assert(range.lowerBound <= totalLength)
-                assert(range.upperBound <= totalLength)
-            }
-            text.addAttribute(.foregroundColor, value: color, range: range)
-        } else {
-            tree.children.forEach {
-                highlight(tree: $0, offset: offset + Int(tree.offset))
-            }
+    func constituentContainingSelection() -> Constituent? {
+        guard
+            let range = Range(self.selectedRange()),
+            var constituent = parse?.descendant(containing: range)
+        else { return nil }
+
+        if range.count == constituent.length, constituent.value != "TOP", constituent.value != "DOC", let parent = constituent.parent {
+            // If the selection lines up with a constituent, select its parent constituent
+            constituent = parent
         }
+        return constituent
     }
 
     /// Expand the current selection to the nearest constituent that has greater length
     func expandSelection() {
-        guard
-            let range = Range(self.selectedRange()),
-            var constituent = parse?.descendant(containing: range)
-        else { return }
-
-        if range.count == constituent.length, let parent = constituent.parent {
-            // If the selection lines up with a constituent, select its parent constituent
-            constituent = parent
+        if let node = self.constituentContainingSelection() {
+            self.select(node)
         }
-
-        self.select(constituent)
     }
 
     /// Shrinks the current selection to a descendant constituent that contains the given character
