@@ -29,6 +29,13 @@ class SemanticTextView: NSTextView {
     var selectionLevel: Int = 10
     var subscription: Set<AnyCancellable> = []
 
+    /// The colour scheme for showing constituents
+    var colors: Highlight = colorSchemes.values.first ?? .none {
+        didSet {
+            self.highlight()
+        }
+    }
+
     init() {
         super.init(frame: .zero)
         /// CoreNLP server we use for parsing

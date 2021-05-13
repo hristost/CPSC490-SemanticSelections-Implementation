@@ -30,12 +30,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 NSMenuItem(
                     title: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a"
                 ),
-                NSMenuItem.separator()] +
-            [
+                NSMenuItem.separator(),
+            ]
+            + [
                 NSMenuItem(
                     title: "Select Sentence",
                     action: #selector(vc.selectSentence),
-                    keyEquivalent: "s"),
+                    keyEquivalent: "s")
             ].map {
                 $0.keyEquivalentModifierMask = [.option, .command]
                 return $0
@@ -63,6 +64,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
 
         mainMenu.addItem(editMenu)
+
+        let viewMenu = NSMenuItem()
+        viewMenu.title = "View"
+        viewMenu.submenu = NSMenu(title: "View")
+        viewMenu.submenu?.items =
+            [ NSMenuItem(
+                    title: "No highlighting", action: #selector(vc.disableHighlighting),
+                    keyEquivalent: "")
+            ]
+            + colorSchemes.map { name, _ in
+                NSMenuItem(
+                    title: name, action: #selector(vc.colorSchemeMenuSelection(sender:)),
+                    keyEquivalent: "")
+            }
+
+        mainMenu.addItem(viewMenu)
 
         NSApplication.shared.mainMenu = mainMenu
 

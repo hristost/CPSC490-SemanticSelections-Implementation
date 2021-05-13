@@ -11,8 +11,8 @@ and a navy blue polyester vest.
 "Form?" Janet interrupts you. You slide over the sheet of paper you filled out while waiting in \
 line.
 
-Janet sips her vending machine coffee and puts the plastic cup aside. She takes your form, puts her \
-reading glasses on, and turns to the computer. You catch a glimpse of a Solitaire game before she \
+Janet sips her vending machine coffee and puts the plastic cup aside. She takes the papers you \
+filled in while waiting in line, puts on her reading glasses, and turns to the computer. You catch a glimpse of a Solitaire game before she \
 quickly closes it.
 
 Janet uses her two index fingers that have long green manicure to methodically poke your data into \

@@ -1,6 +1,32 @@
 import AppKit
 import NLP
 
+// MARK: Colour schemes
+let colorSchemes: [String: SemanticTextView.Highlight] = [
+    "Orange": .linear(
+        NSColor.systemOrange,
+        NSColor.systemBlue
+            .blended(withFraction: 0.6, of: .labelColor)!
+            .withAlphaComponent(0.6)
+    ),
+    "Pink": .linear(
+        NSColor.systemPink,
+        NSColor.systemBlue
+            .blended(withFraction: 0.2, of: .labelColor)!
+            .withAlphaComponent(0.8)
+    ),
+    "Pink - Blue - Grey": .tricolor(
+        NSColor.systemPink,
+        NSColor.systemBlue
+            .blended(withFraction: 0.2, of: .labelColor)!
+            .withAlphaComponent(0.7),
+        NSColor.systemBlue
+            .blended(withFraction: 0.8, of: .labelColor)!
+            .withAlphaComponent(0.6)
+    )
+]
+
+// MARK: Highlighting
 extension Range {
     func contains(_ range: Range<Self.Bound>) -> Bool {
         range.clamped(to: self) == range
@@ -8,10 +34,13 @@ extension Range {
 }
 let fadedTextColor = NSColor.labelColor.withAlphaComponent(0.4)
 let fadedParagraphColor = NSColor.labelColor.withAlphaComponent(0.6)
-let deepColor = NSColor.systemBlue.blended(withFraction: 0.7, of: .labelColor)!.withAlphaComponent(0.6)
-let shallowColor = NSColor.systemOrange
 
 extension SemanticTextView {
+    enum Highlight {
+        case none
+        case linear(NSColor, NSColor)
+        case tricolor(NSColor, NSColor, NSColor)
+    }
     /// Apply semantic highlighting
     func highlight() {
         guard let parse = self.parse else { return }
@@ -58,6 +87,29 @@ extension SemanticTextView {
 
     }
 
+    /// The foreground colour for a word with the given embedding level
+    /// - Parameter depth: a value between 0 and 1, where 0 is most shallow, and 1 most deep
+    func color(forLevel depth: CGFloat) -> NSColor {
+        let easeIn: (CGFloat) -> CGFloat = { pow($0, 1.2) }
+        let easeOut: (CGFloat) -> CGFloat = { 1 - pow(1 - $0, 1.2) }
+
+        switch self.colors {
+        case .tricolor(let a, let b, let c):
+            switch depth {
+            case 0..<1 / 2:
+                return a.blended(withFraction: easeOut(depth * 2), of: b) ?? a
+            default:
+                return b.blended(withFraction: easeIn((depth - 0.5) * 2), of: c) ?? b
+            }
+
+        case .linear(let a, let b):
+            return a.blended(withFraction: depth, of: b) ?? a
+
+        case .none:
+            return .labelColor
+        }
+    }
+
     func highlight(tree: Constituent, levels: [Int], offset: Int = 0) {
         guard let text = self.textStorage else { return }
         if tree.children.isEmpty {
@@ -69,7 +121,7 @@ extension SemanticTextView {
                 levels.count > 1
                 ? (CGFloat(level) / CGFloat(min(levels.count - 1, 6))).clamped(to: 0..<1)
                 : 0.5
-            let color = shallowColor.blended(withFraction: alpha, of: deepColor)
+            let color = self.color(forLevel: alpha)
             let totalLength = self.attributedString().length
             if totalLength > 0 {
                 guard range.lowerBound <= totalLength,

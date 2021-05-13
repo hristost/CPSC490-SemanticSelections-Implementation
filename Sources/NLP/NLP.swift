@@ -45,6 +45,11 @@ public class Constituent {
         self.children = children
         self.value = value
     }
+
+    /// How many levels of descendants the constituent has
+    public var height: Int {
+        children.map(\.height).reduce(0, max)
+    }
 }
 
 extension Constituent: CustomStringConvertible {

@@ -67,5 +67,10 @@ class ViewController: NSViewController, NSTextViewDelegate {
     @objc func selectRightNeighbour() {
         textField.selectRightNeighbour()
     }
-
+    @objc func disableHighlighting() {
+        textField.colors = .none
+    }
+    @objc func colorSchemeMenuSelection(sender: NSMenuItem) {
+        textField.colors = colorSchemes[sender.title] ?? .none
+    }
 }
