@@ -57,3 +57,9 @@ extension Constituent: CustomStringConvertible {
         "(\(offset) \(length) L\(level) \(value ?? "?") \(self.children.map { $0.description }.joined(separator: " ")))"
     }
 }
+
+extension Constituent: Equatable {
+    public static func == (lhs: Constituent, rhs: Constituent) -> Bool {
+        return lhs.absoluteRange == rhs.absoluteRange
+    }
+}

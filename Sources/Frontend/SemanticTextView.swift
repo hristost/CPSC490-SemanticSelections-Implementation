@@ -1,33 +1,23 @@
 import AppKit
 import Backend
+import Carbon.HIToolbox
 import Combine
 import NLP
 
-extension Int {
-    func clamped(to range: Range<Int>) -> Int {
-        Swift.min(Swift.max(self, range.lowerBound), range.upperBound)
-    }
-}
-extension CGFloat {
-    func clamped(to range: Range<CGFloat>) -> CGFloat {
-        Swift.min(Swift.max(self, range.lowerBound), range.upperBound)
-    }
-}
-
-extension Optional {
-    func makeNil(if cond: Bool) -> Wrapped? {
-        cond ? nil : self
-    }
-}
-
 class SemanticTextView: NSTextView {
+    enum SelectionDirection {
+        case left, right
+        func negated() -> SelectionDirection {
+            return self == .left ? .right : .left
+        }
+    }
+
     /// Parsed text
     ///
     /// - Note: Not always up-to-date
     var parse: Constituent? = nil
     /// Desired selection level in the constituent tree, where 0 = complete sentence
     var selectionLevel: Int = 10
-    var subscription: Set<AnyCancellable> = []
 
     /// The colour scheme for showing constituents
     var colors: Highlight = colorSchemes.values.first ?? .none {
@@ -35,6 +25,10 @@ class SemanticTextView: NSTextView {
             self.highlight()
         }
     }
+
+    var subscription: Set<AnyCancellable> = []
+    var lastAnchorPoint: Range<Int> = 0..<1
+    var selectionDirection: SelectionDirection = .right
 
     init() {
         super.init(frame: .zero)
@@ -72,6 +66,8 @@ class SemanticTextView: NSTextView {
                 self.highlight()
             }
             .store(in: &self.subscription)
+
+        self.delegate = self
     }
 
     // Additional initializers just so everything compiles
@@ -80,48 +76,55 @@ class SemanticTextView: NSTextView {
         super.init(frame: frameRect, textContainer: textContainer)
     }
 
-    override func otherMouseDown(with event: NSEvent) {
-        // When the tertiary mouse button (i.e. wheel button) is pressed, we enter selection mode:
-        // - Moving the mouse selects a constituent under the cursor
-        // - Scrolling up or down using the scroll wheel expands or shrinks the selection
-        selectionMode()
+    override func setSelectedRange(
+        _ charRange: NSRange, affinity: NSSelectionAffinity, stillSelecting: Bool
+    ) {
+        // Override so we can keep track of selection direction (see SelectionDirection.swift)
+        if charRange.length == 0, let anchor = Range(charRange) {
+            self.lastAnchorPoint = anchor
+        }
+        super.setSelectedRange(charRange, affinity: affinity, stillSelecting: stillSelecting)
     }
 
-    override func selectionRange(
-        forProposedRange proposedCharRange: NSRange, granularity: NSSelectionGranularity
-    ) -> NSRange {
-        switch granularity {
-        case .selectByCharacter, .selectByWord:
-            return super.selectionRange(
-                forProposedRange: proposedCharRange,
-                granularity: granularity)
+    override func keyDown(with event: NSEvent) {
+        let leftArrow = event.keyCode == kVK_LeftArrow
+        let rightArrow = event.keyCode == kVK_RightArrow
+        let movement: SelectionDirection = leftArrow ? .left : .right
+        let range = self.trimmedSelection()
 
-        case .selectByParagraph:
-            // The "Select by paragraph" mode is activated with three clicks. We change it to
-            // mean "Select by sentence"
-            if let range = Range(proposedCharRange),
-                let node = self.parse?
-                    .descendant(containing: range)?
-                    .sentenceAncestor()
-            {
-                return .init(node.absoluteRange)
-            }
-
-            return super.selectionRange(
-                forProposedRange: proposedCharRange, granularity: granularity)
-
-        default:
-            return super.selectionRange(
-                forProposedRange: proposedCharRange,
-                granularity: .selectByParagraph)
+        if event.modifierFlags.contains([.shift, .option]),
+            leftArrow || rightArrow,
+            let modifiedRange = self.modifiedSelection(range, movementDirection: movement)
+        {
+            // We are augmenting / trimming selection using shift + alt + left/right
+            self.setSelectedRange(.init(modifiedRange))
+        } else if event.modifierFlags.contains(.option),
+            !event.modifierFlags.contains(.shift),
+            leftArrow || rightArrow,
+            let newSelection = self.newSelection(range, movementDirection: movement)
+        {
+            // We are selecting a neighbour node using alt + left/right
+            self.select(newSelection)
+        } else {
+            super.keyDown(with: event)
         }
+
     }
 
     override func mouseDown(with event: NSEvent) {
-        if Parser.shared!.language == .english && event.clickCount == 4 {
+        let location = self.convert(event.locationInWindow, from: nil)
+        let offset = self.characterIndexForInsertion(at: location)
+        let range = self.trimmedSelection()
+        if event.modifierFlags.contains([.shift, .option]),
+            let newSelection = self.modifiedSelection(
+                range,
+                toInclude: offset)
+        {
+            // If the user clicks while holding shift and alt on the keyboard, try adjusting the
+            // selection to snap a constituent
+            self.setSelectedRange(.init(newSelection))
+        } else if Parser.shared!.language == .english && event.clickCount == 4 {
             // When the user clicks three times, we assume they want to select a paragraph
-            let location = self.convert(event.locationInWindow, from: nil)
-            let offset = self.characterIndexForInsertion(at: location)
             let paragraph = selectionRange(
                 forProposedRange: .init(location: offset, length: 0),
                 granularity: NSSelectionGranularity(rawValue: 4)!)
@@ -138,9 +141,10 @@ class SemanticTextView: NSTextView {
         }
     }
 
-    /// Start selection mode
-    func selectionMode() {
-        print("Enter selection mode")
+    override func otherMouseDown(with event: NSEvent) {
+        // When the tertiary mouse button (i.e. wheel button) is pressed, we enter selection mode:
+        // - Moving the mouse selects a constituent under the cursor
+        // - Scrolling up or down using the scroll wheel expands or shrinks the selection
 
         let events: NSEvent.EventTypeMask = [
             .mouseMoved, .otherMouseDragged, .scrollWheel, .otherMouseUp,
@@ -170,13 +174,12 @@ class SemanticTextView: NSTextView {
                     self.selectionLevel = max(self.selectionLevel, 0)
                 }
             }
-
         }
-        print("End selection mode")
     }
 
     var magnification: CGFloat = 0
     override func magnify(with event: NSEvent) {
+        // Make the pinch out / pinch in gestures expand / trim the current selection
         let location = self.convert(event.locationInWindow, from: nil)
         let offset = self.characterIndexForInsertion(at: location)
 
@@ -187,17 +190,56 @@ class SemanticTextView: NSTextView {
         }
     }
 
+    override func selectionRange(
+        forProposedRange proposedCharRange: NSRange, granularity: NSSelectionGranularity
+    ) -> NSRange {
+        // Override so we can triple-click to select a sentence
+        //
+        // Ideally, this should also modify consequent modifications using the shift key + arrow
+        // key or shift key + mouse click. But the value returned by this function is never used..?
+        switch granularity {
+        case .selectByCharacter, .selectByWord:
+            // Default
+            return super.selectionRange(
+                forProposedRange: proposedCharRange,
+                granularity: granularity)
+
+        case .selectByParagraph:
+            // The "Select by paragraph" mode is activated with three clicks. We change it to
+            // mean "Select by sentence"
+            if let range = Range(proposedCharRange),
+                let node = self.parse?
+                    .descendant(containing: range)?
+                    .sentenceAncestor()
+            {
+                return .init(node.absoluteRange)
+            }
+
+            return super.selectionRange(
+                forProposedRange: proposedCharRange,
+                granularity: granularity)
+
+        default:
+            // A value other than the three default ones is something we set ourselves using
+            // .init(rawValue). We assume that to mean "Select by paragraph"
+            return super.selectionRange(
+                forProposedRange: proposedCharRange, granularity: .selectByParagraph)
+        }
+    }
+
     func constituentContainingSelection() -> Constituent? {
         guard
             let range = Range(self.selectedRange()),
             var constituent = parse?.descendant(containing: range)
         else { return nil }
 
-        if range.count == constituent.length, constituent.value != "TOP", constituent.value != "DOC", let parent = constituent.parent {
+        if range.count == constituent.length, constituent.value != "TOP",
+            constituent.value != "DOC", let parent = constituent.parent
+        {
             // If the selection lines up with a constituent, select its parent constituent
             constituent = parent
         }
-        return constituent
+        return constituent.value != "DOC" ? constituent : nil
     }
 
     /// Expand the current selection to the nearest constituent that has greater length
@@ -223,7 +265,6 @@ class SemanticTextView: NSTextView {
             centerIndex.clamped(to: constituent.absoluteRange)
                 - constituent.absoluteRange.lowerBound,
             constituent.length - 1)
-        print("focus at \(centerIndex)", cursor, cursorClamped)
 
         if let child =
             constituent.children.first(where: { $0.range.contains(cursor) })
@@ -234,28 +275,7 @@ class SemanticTextView: NSTextView {
         }
     }
 
-    func selectLeftNeighbour() {
-        guard
-            let range = Range(self.selectedRange()),
-            let constituent = parse?.descendant(containing: range),
-            range.count == constituent.length,
-            let neighbour = constituent.leftNeighbour()
-        else { return }
-
-        self.select(neighbour)
-    }
-
-    func selectRightNeighbour() {
-        guard
-            let range = Range(self.selectedRange()),
-            let constituent = parse?.descendant(containing: range),
-            range.count == constituent.length,
-            let neighbour = constituent.rightNeighbour()
-        else { return }
-
-        self.select(neighbour)
-    }
-
+    /// Select the sentence that encloses the current selection
     func selectSentence() {
         guard
             let range = Range(self.selectedRange()),
@@ -264,8 +284,12 @@ class SemanticTextView: NSTextView {
 
         self.select(node)
     }
+}
 
-    private func select(_ span: Constituent) {
+fileprivate extension SemanticTextView {
+
+    /// Set the current selection to the constituent's span, and update `lastFocus` on ancestors
+    func select(_ span: Constituent) {
         self.setSelectedRange(.init(span.absoluteRange))
         self.selectionLevel = span.level
 
@@ -274,5 +298,127 @@ class SemanticTextView: NSTextView {
             parent.lastFocus = node
             node = parent
         }
+    }
+
+    /// The constituent to be selected after moving left or right from a range
+    func newSelection(_ range: Range<Int>, movementDirection: SelectionDirection) -> Constituent? {
+        guard
+            let node = parse?.descendant(containing: range),
+            node.length == range.count
+        else { return nil }
+        return movementDirection == .left ? node.leftNeighbour() : node.rightNeighbour()
+    }
+
+    /// The given range, extended or trimmed so that it contains the given offset
+    func modifiedSelection(_ range: Range<Int>, toInclude x: Int) -> Range<Int>? {
+
+        if range.contains(x) {
+            // Trim
+            var range = range
+            while range.contains(x),
+                let next = modifiedSelection(
+                    range, movementDirection: self.selectionDirection.negated()),
+                next.contains(x)
+
+            {
+                range = next
+            }
+            return range.contains(x) ? range : nil
+
+        } else {
+            // Expand
+            self.selectionDirection = x < range.lowerBound ? .left : .right
+            var range = range
+            while !range.contains(x),
+                let next = modifiedSelection(range, movementDirection: self.selectionDirection)
+            {
+                range = next
+            }
+            return range.contains(x) ? range : nil
+        }
+    }
+
+    /// The current range, extended or trimmed by moving a constituent left or right
+    func modifiedSelection(_ range: Range<Int>, movementDirection: SelectionDirection) -> Range<Int>? {
+
+        guard let (leftBoundary, rightBoundary) = self.parse?.findBoundaryNodes(for: range) else {
+            return nil
+        }
+        let level = max(leftBoundary.level, rightBoundary.level)
+
+        switch (movementDirection, selectionDirection, leftBoundary == rightBoundary) {
+        case (.left, .left, _):
+            // Expand left
+            if let next = leftBoundary.leftNeighbour(atLevel: level) {
+                return next.absoluteRange.lowerBound..<range.upperBound
+            }
+
+        case (.right, .right, _):
+            // Push tail
+            if let next = rightBoundary.rightNeighbour(atLevel: level) {
+                return range.lowerBound..<next.absoluteRange.upperBound
+            }
+
+        case (.left, .right, false):
+            // Trim right
+            if let x = rightBoundary.leftNeighbour(atLevel: level)?
+                .absoluteRange.upperBound,
+                x >= range.lowerBound
+            {
+                return range.lowerBound..<x
+            }
+        case (.left, .right, true):
+            // Trim tail in a constituent
+            if let x = rightBoundary.children.dropLast(1).last?
+                .absoluteRange.upperBound,
+                x >= range.lowerBound
+            {
+                return range.lowerBound..<x
+            }
+
+        case (.right, .left, false):
+            // Trim left
+            if let x = leftBoundary.rightNeighbour(atLevel: level)?
+                .absoluteRange.lowerBound,
+                x <= range.upperBound
+            {
+                return x..<range.upperBound
+            }
+        case (.right, .left, true):
+            // Trim head in a constituent
+            if let x = leftBoundary.children.dropFirst(1).first?
+                .absoluteRange.lowerBound,
+                x <= range.upperBound
+            {
+                return x..<range.upperBound
+            }
+
+        }
+        return nil
+
+    }
+
+    // The current selection with whitespace trimmed off
+    func trimmedSelection() -> Range<Int> {
+        guard
+            let range = Range(self.selectedRange()),
+            let string = self.textStorage?.string,
+            let stringRange = Range(NSRange(range), in: string)
+        else { return 0..<0 }
+
+        let substring = string[stringRange]
+
+        var trimLeft = 0
+        var trimRight = 0
+
+        let pass: (Character) -> Bool = { $0.isWhitespace || $0.isNewline }
+        while substring.dropFirst(trimLeft).first.map(pass) ?? false { trimLeft += 1 }
+        while substring.dropLast(trimRight).last.map(pass) ?? false { trimRight += 1 }
+
+        let start = range.lowerBound + trimLeft
+        let end = range.upperBound - trimRight
+
+        return start..<max(start, end)
+
     }
 }

@@ -62,12 +62,6 @@ class ViewController: NSViewController, NSTextViewDelegate {
     @objc func focusSelection() {
         textField.focusSelection(at: -1)
     }
-    @objc func selectLeftNeighbour() {
-        textField.selectLeftNeighbour()
-    }
-    @objc func selectRightNeighbour() {
-        textField.selectRightNeighbour()
-    }
     @objc func disableHighlighting() {
         textField.colors = .none
     }

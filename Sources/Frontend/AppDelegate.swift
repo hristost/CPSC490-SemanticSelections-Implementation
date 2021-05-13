@@ -61,15 +61,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 NSMenuItem(
                     title: "Refine Selection",
                     action: #selector(vc.focusSelection),
-                    keyEquivalent: String(format: "%C", NSDownArrowFunctionKey)),
-                NSMenuItem(
-                    title: "Select Left Neighbour",
-                    action: #selector(vc.selectLeftNeighbour),
-                    keyEquivalent: String(format: "%C", NSLeftArrowFunctionKey)),
-                NSMenuItem(
-                    title: "Select Right Neighbour",
-                    action: #selector(vc.selectRightNeighbour),
-                    keyEquivalent: String(format: "%C", NSRightArrowFunctionKey)),
+                    keyEquivalent: String(format: "%C", NSDownArrowFunctionKey))
             ].map {
                 $0.keyEquivalentModifierMask = .option
                 return $0

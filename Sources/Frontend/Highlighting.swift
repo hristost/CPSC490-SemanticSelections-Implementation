@@ -75,7 +75,6 @@ extension SemanticTextView {
 
         for sent in parse.children
         where Range(sentencesRange)?.contains(sent.absoluteRange) ?? false {
-            print(sent.enumerateLevels().sorted())
             highlight(tree: sent, levels: sent.enumerateLevels().sorted())
         }
 
