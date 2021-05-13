@@ -118,8 +118,7 @@ class SemanticTextView: NSTextView {
     }
 
     override func mouseDown(with event: NSEvent) {
-        switch event.clickCount {
-        case 4:
+        if Parser.shared!.language == .english && event.clickCount == 4 {
             // When the user clicks three times, we assume they want to select a paragraph
             let location = self.convert(event.locationInWindow, from: nil)
             let offset = self.characterIndexForInsertion(at: location)
@@ -128,11 +127,15 @@ class SemanticTextView: NSTextView {
                 granularity: NSSelectionGranularity(rawValue: 4)!)
             self.setSelectedRange(paragraph)
 
-        default:
+        } else if Parser.shared!.language == .chinese && event.clickCount > 1 {
+            // Since we don't support more than one sentence in Chinese, a triple click would always
+            // result in everything being selected. For added utility, we override every additional
+            // click to expand the selection
+            self.expandSelection()
+
+        } else {
             super.mouseDown(with: event)
-
         }
-
     }
 
     /// Start selection mode

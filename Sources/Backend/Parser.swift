@@ -4,8 +4,27 @@ import PythonKit
 import NLP
 import Combine
 
+
 public class Parser {
     public static var shared: Parser! = nil
+    public enum Language: String, CaseIterable {
+        case english = "en"
+        case english_roberta = "roberta-en"
+        case chinese = "zh"
+
+        public func name() -> String {
+            switch self {
+                case .english: return "English"
+                case .english_roberta: return "English (RoBERTa)"
+                case .chinese: return "Chinese (single sentence only)"
+            }
+        }
+    }
+    public var language: Language = .english {
+        didSet {
+            nlp.load_language(language.rawValue)
+        }
+    }
     internal var nlp: PythonObject
 
     public init() throws {
@@ -21,6 +40,7 @@ public class Parser {
         sys.path.append(moduleFolder.path)
 
         self.nlp = try Python.attemptImport(bridgeModuleName)
+        self.nlp.load_language(self.language.rawValue)
     }
 
     public enum SuParError: Error {

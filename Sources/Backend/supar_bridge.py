@@ -9,15 +9,20 @@ def nop(it, *a, **k):
 
 #tqdm.tqdm = nop
 
-import nltk
 import supar
-from nltk.tokenize.punkt import PunktSentenceTokenizer
-from nltk.tokenize.treebank import TreebankWordTokenizer
+import nltk
 from typing import Tuple, List
 
 Span = Tuple[int, int]
 
-parser = supar.Parser.load('crf-con-en')
+language = "en"
+parser = None
+
+def load_language(lang: str):
+    global language, parser
+    language = lang
+    parser = supar.Parser.load('crf-con-' + lang)
+
 
 class Token:
     def __init__(self, start, end):
@@ -44,6 +49,12 @@ def nltk_to_tree(nltk_tree: nltk.Tree) -> Tree:
         return Tree(nltk_tree, children)
 
 def parse(text: str):
+    global language
+    return parse_zh(text) if language == "zh" else parse_en(text)
+
+def parse_en(text: str):
+    from nltk.tokenize.punkt import PunktSentenceTokenizer
+    from nltk.tokenize.treebank import TreebankWordTokenizer
     wordTokenizer = TreebankWordTokenizer()
     sentTokenizer = PunktSentenceTokenizer()
     #
@@ -57,11 +68,31 @@ def parse(text: str):
         start, end = token_span
         sent_start = sent_span[0]
         return Token(sent_start + start, sent_start + end)
+    #
     all_token_spans = [[embed_in_sent(token, sent) for token in token_spans]
                                                    for (sent, token_spans) in zip(sent_spans, sent_token_spans)]
     parsed = map(nltk_to_tree, parser.predict(sent_tokens, lang=None, verbose=True).trees)
     #
     return list(zip(parsed, all_token_spans))
 
+def parse_zh(text: str):
+    import jieba
+    # We do not support sentence segmentation for chinese text
+    tokens = list(jieba.tokenize(text))
+    all_token_spans = [[Token(token[1], token[2]) for token in tokens]]
+    sent_tokens = [[token[0] for token in tokens]]
+    print(sent_tokens)
+    parsed = map(nltk_to_tree, parser.predict(sent_tokens, lang=None, verbose=True).trees)
+    #
+    return list(zip(parsed, all_token_spans))
+
+def zh_tokenize(text: str):
+    # Is sometimes more accurate than jieba.tokenize?
+    start = 0
+    for ch in text:
+        yield (ch, start, start+1)
+        start = start + 1
+
 if __name__ == "__main__":
+    load_language("en")
     print("Parser loaded successfully")

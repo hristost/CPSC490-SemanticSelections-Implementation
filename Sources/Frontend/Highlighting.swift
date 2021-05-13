@@ -1,5 +1,6 @@
 import AppKit
 import NLP
+import Backend
 
 // MARK: Colour schemes
 let colorSchemes: [String: SemanticTextView.Highlight] = [
@@ -117,9 +118,10 @@ extension SemanticTextView {
             let length = tree.length
             let range = NSMakeRange(Int(start) + offset, Int(length))
             let level = levels.firstIndex(of: tree.level) ?? 0
+            let maxLevels = Parser.shared!.language == .english ? 6 : 8
             let alpha =
                 levels.count > 1
-                ? (CGFloat(level) / CGFloat(min(levels.count - 1, 6))).clamped(to: 0..<1)
+                ? (CGFloat(level) / CGFloat(min(levels.count - 1, maxLevels))).clamped(to: 0..<1)
                 : 0.5
             let color = self.color(forLevel: alpha)
             let totalLength = self.attributedString().length

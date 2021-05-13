@@ -1,4 +1,5 @@
 import AppKit
+import Backend
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     let windowDelegate = WindowDelegate()
@@ -17,6 +18,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         ]
         let mainMenu = NSMenu(title: "Semantic Text Editor")
         mainMenu.addItem(appMenu)
+
+        let languageMenu = NSMenuItem()
+        languageMenu.title = "Language"
+        languageMenu.submenu = NSMenu(title: "Language")
+        languageMenu.submenu?.items = Parser.Language.allCases.map {
+                NSMenuItem(
+                    title: $0.name(),
+                    action: #selector(vc.changeLanguageMenu(sender:)),
+                    keyEquivalent: "")
+
+            }
 
         let editMenu = NSMenuItem()
         editMenu.title = "Edit"
@@ -62,13 +74,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 $0.keyEquivalentModifierMask = .option
                 return $0
             }
+            + [NSMenuItem.separator(), languageMenu]
 
         mainMenu.addItem(editMenu)
 
-        let viewMenu = NSMenuItem()
-        viewMenu.title = "View"
-        viewMenu.submenu = NSMenu(title: "View")
-        viewMenu.submenu?.items =
+        let colorschemes = NSMenuItem()
+        colorschemes.title = "Colourscheme"
+        colorschemes.submenu = NSMenu(title: "Colourscheme")
+        colorschemes.submenu?.items =
             [ NSMenuItem(
                     title: "No highlighting", action: #selector(vc.disableHighlighting),
                     keyEquivalent: "")
@@ -79,6 +92,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     keyEquivalent: "")
             }
 
+        let viewMenu = NSMenuItem()
+        viewMenu.title = "View"
+        viewMenu.submenu = NSMenu(title: "View")
+        viewMenu.submenu?.items = [colorschemes]
         mainMenu.addItem(viewMenu)
 
         NSApplication.shared.mainMenu = mainMenu

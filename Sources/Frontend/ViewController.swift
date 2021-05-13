@@ -1,4 +1,5 @@
 import AppKit
+import Backend
 
 class ViewController: NSViewController, NSTextViewDelegate {
     let textField = SemanticTextView()
@@ -72,5 +73,20 @@ class ViewController: NSViewController, NSTextViewDelegate {
     }
     @objc func colorSchemeMenuSelection(sender: NSMenuItem) {
         textField.colors = colorSchemes[sender.title] ?? .none
+    }
+    @objc func changeLanguageMenu(sender: NSMenuItem) {
+        guard
+            let language = Parser.Language.allCases.first(where: {$0.name() == sender.title })
+        else { return }
+        Parser.shared?.language = language
+
+        let range = 0..<textField.string.count
+        switch language {
+            case .english, .english_roberta:
+            textField.insertText(janet, replacementRange: NSRange(range))
+            case .chinese:
+            textField.insertText(chinese, replacementRange: NSRange(range))
+        }
+
     }
 }

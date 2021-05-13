@@ -36,3 +36,7 @@ looking at?
 You look behind you. The wall clock shows half past noon. You look back at the counter. "Out for \
 lunch break." Janet is gone.
 """
+
+let chinese = """
+營養師怎麼說，那是因為他們不了解蜂蜜檸檬的精神。
+""" // https://zh.wikipedia.org/wiki/蜂蜜檸檬_(迷因)
